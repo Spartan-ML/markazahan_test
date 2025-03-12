@@ -2,31 +2,39 @@
 
 import { useState, useEffect } from "react";
 
+// Helper function to get data from localStorage
+const getStoredNames = (): string[] => {
+  if (typeof window !== "undefined") {
+    const storedNames = localStorage.getItem("names");
+    return storedNames ? JSON.parse(storedNames) : [];
+  }
+  return [];
+};
+
 export default function InputNamePage() {
   const [name, setName] = useState("");
-  const [names, setNames] = useState<string[]>([]);
+  // Initialize the state with data from localStorage (if available)
+  const [names, setNames] = useState<string[]>(getStoredNames);
 
+  // Use effect to update localStorage whenever names change
   useEffect(() => {
-    const storedNames = localStorage.getItem("names");
-    if (storedNames) {
-      setNames(JSON.parse(storedNames));
+    if (typeof window !== "undefined") {
+      localStorage.setItem("names", JSON.stringify(names));
     }
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem("names", JSON.stringify(names));
   }, [names]);
 
+  // Function to handle name addition
   const handleAddName = () => {
-    if (name.trim() !== "" && !names.includes(name)) {
-      setNames([...names, name]);
+    const trimmedName = name.trim();
+    if (trimmedName !== "" && !names.includes(trimmedName)) {
+      setNames((prevNames) => [...prevNames, trimmedName]);
       setName("");
     }
   };
 
+  // Function to handle name deletion
   const handleDeleteName = (nameToRemove: string) => {
-    const updatedNames = names.filter((n) => n !== nameToRemove);
-    setNames(updatedNames);
+    setNames((prevNames) => prevNames.filter((n) => n !== nameToRemove));
   };
 
   return (
@@ -48,9 +56,20 @@ export default function InputNamePage() {
       <h2>Stored Names:</h2>
       <ul>
         {names.map((n, index) => (
-          <li key={index} style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          <li
+            key={index}
+            style={{ display: "flex", gap: "10px", alignItems: "center" }}
+          >
             {n}
-            <button onClick={() => handleDeleteName(n)} style={{ color: "red", border: "none", background: "none", cursor: "pointer" }}>
+            <button
+              onClick={() => handleDeleteName(n)}
+              style={{
+                color: "red",
+                border: "none",
+                background: "none",
+                cursor: "pointer",
+              }}
+            >
               ❌
             </button>
           </li>
