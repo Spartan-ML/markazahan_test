@@ -1,80 +1,104 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import InputNamePage from "./InputNamePage";
-
-// Mock localStorage
-beforeEach(() => {
-  Storage.prototype.getItem = jest.fn(() => JSON.stringify(["Alice", "Bob"]));
-  Storage.prototype.setItem = jest.fn();
-});
-
-afterEach(() => {
-  jest.clearAllMocks();
-});
+import InputNamePage from "./InputNamePage.test";
 
 describe("InputNamePage", () => {
-  it("should render input and add button", () => {
-    render(<InputNamePage />);
+  // Mock localStorage
+  beforeEach(() => {
+    const localStorageMock = (function () {
+      let store: { [key: string]: string } = {};
+      return {
+        getItem(key: string) {
+          return store[key] || null;
+        },
+        setItem(key: string, value: string) {
+          store[key] = value.toString();
+        },
+        removeItem(key: string) {
+          delete store[key];
+        },
+        clear() {
+          store = {};
+        },
+      };
+    })();
 
-    // Check for input field
-    expect(screen.getByPlaceholderText("Enter a name")).toBeInTheDocument();
+    global.localStorage = localStorageMock;
+  });
 
-    // Check for Add button
-    expect(screen.getByText("Add")).toBeInTheDocument();
+  afterEach(() => {
+    localStorage.clear();
   });
 
   it("should load stored names from localStorage", () => {
+    // Arrange: Store names in localStorage before rendering
+    const storedNames = ["John", "Jane"];
+    localStorage.setItem("names", JSON.stringify(storedNames));
+
+    // Act: Render the component
     render(<InputNamePage />);
 
-    // Verify that initial names are rendered
-    expect(screen.getByText("Alice")).toBeInTheDocument();
-    expect(screen.getByText("Bob")).toBeInTheDocument();
+    // Assert: Check if the names are rendered correctly
+    expect(screen.getByText("John")).toBeInTheDocument();
+    expect(screen.getByText("Jane")).toBeInTheDocument();
   });
 
-  it("should add a new name when the Add button is clicked", async () => {
+  it("should add a new name to the list and store it in localStorage", async () => {
+    // Arrange: Render the component
     render(<InputNamePage />);
 
+    // Act: Type a name and click "Add"
     const input = screen.getByPlaceholderText("Enter a name");
-    const addButton = screen.getByText("Add");
+    const button = screen.getByText("Add");
 
-    // Type in the input field and click Add button
-    await userEvent.type(input, "Charlie");
-    await userEvent.click(addButton);
+    fireEvent.change(input, { target: { value: "Alice" } });
+    fireEvent.click(button);
 
-    // Check if Charlie was added
-    expect(screen.getByText("Charlie")).toBeInTheDocument();
+    // Assert: Check if the name is added to the list
+    await waitFor(() => expect(screen.getByText("Alice")).toBeInTheDocument());
 
-    // Check if localStorage.setItem was called
-    expect(localStorage.setItem).toHaveBeenCalledWith("names", JSON.stringify(["Alice", "Bob", "Charlie"]));
+    // Assert: Check if the name is stored in localStorage
+    expect(localStorage.getItem("names")).toContain("Alice");
   });
 
-  it("should not add duplicate names", async () => {
+  it("should delete a name from the list and update localStorage", async () => {
+    // Arrange: Store a name in localStorage before rendering
+    localStorage.setItem("names", JSON.stringify(["John"]));
+
+    // Act: Render the component and delete the name
+    render(<InputNamePage />);
+    const deleteButton = screen.getByText("❌");
+
+    fireEvent.click(deleteButton);
+
+    // Assert: Check if the name is removed from the list
+    await waitFor(() => expect(screen.queryByText("John")).toBeNull());
+
+    // Assert: Check if localStorage is updated
+    const names = JSON.parse(localStorage.getItem("names") || "[]");
+    expect(names).not.toContain("John");
+  });
+
+  it("should not add empty or duplicate names", () => {
+    // Arrange: Render the component
     render(<InputNamePage />);
 
+    // Act: Try adding an empty name
     const input = screen.getByPlaceholderText("Enter a name");
-    const addButton = screen.getByText("Add");
+    const button = screen.getByText("Add");
 
-    // Type in a name that already exists and click Add button
-    await userEvent.type(input, "Alice");
-    await userEvent.click(addButton);
+    fireEvent.change(input, { target: { value: "" } });
+    fireEvent.click(button);
 
-    // Check that Alice is not added again
-    expect(screen.queryByText("Alice")).toBeInTheDocument();
-    expect(localStorage.setItem).toHaveBeenCalledWith("names", JSON.stringify(["Alice", "Bob"]));
-  });
+    // Assert: No name should be added
+    expect(screen.queryByText("")).toBeNull();
 
-  it("should delete a name when the delete button is clicked", async () => {
-    render(<InputNamePage />);
+    // Act: Try adding a duplicate name
+    fireEvent.change(input, { target: { value: "John" } });
+    fireEvent.click(button);
+    fireEvent.change(input, { target: { value: "John" } });
+    fireEvent.click(button);
 
-    const deleteButton = screen.getAllByText("❌")[0]; // Delete the first name (Alice)
-
-    // Click delete button for the first name
-    await userEvent.click(deleteButton);
-
-    // Check if the name was removed
-    expect(screen.queryByText("Alice")).not.toBeInTheDocument();
-
-    // Check if localStorage.setItem was called to update the names
-    expect(localStorage.setItem).toHaveBeenCalledWith("names", JSON.stringify(["Bob"]));
+    // Assert: Only one "John" should be in the list
+    expect(screen.queryAllByText("John")).toHaveLength(1);
   });
 });
