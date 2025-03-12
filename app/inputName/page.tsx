@@ -13,10 +13,8 @@ const getStoredNames = (): string[] => {
 
 export default function InputNamePage() {
   const [name, setName] = useState("");
-  // Initialize the state with data from localStorage (if available)
   const [names, setNames] = useState<string[]>(getStoredNames);
 
-  // Use effect to update localStorage whenever names change
   useEffect(() => {
     if (typeof window !== "undefined") {
       localStorage.setItem("names", JSON.stringify(names));

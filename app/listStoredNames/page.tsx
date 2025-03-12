@@ -28,7 +28,6 @@ export default function ListStoredNamesPage() {
   const handleDrop = (e: React.DragEvent, index: number) => {
     e.preventDefault();
 
-    // If the dragged item is dropped on itself, do nothing
     if (draggedIndex === null || draggedIndex === index) {
       return;
     }

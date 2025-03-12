@@ -27,7 +27,7 @@ export default function GenerateNamesPage() {
     
     setNames((prevNames) => [...prevNames, ...newNames]);
     setLoading(false);
-    setHasMore(newNames.length > 0);  // This can be adjusted depending on your logic
+    setHasMore(newNames.length > 0);
   }, [loading, hasMore]);
 
   // Intersection Observer to detect when user scrolls to the bottom
